@@ -4,20 +4,25 @@ from datetime import datetime
 import urllib.parse
 
 # 1. 앱 설정
-st.set_page_config(
-    page_title="커피당번", 
-    page_icon="☕", 
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="커피당번", page_icon="☕", layout="centered")
 
-# 2. 가독성 중심 고대비 디자인
+# 2. 카카오톡 외부 브라우저 호출 스크립트 (모바일 최적화)
+# 카카오톡 브라우저로 접속 시 자동으로 Safari 등을 호출하거나 안내합니다.
 st.markdown("""
+    <script>
+    var userAgent = navigator.userAgent.toLowerCase();
+    var targetUrl = location.href;
+
+    if (userAgent.match(/kakaotalk/i)) {
+        // 카카오톡 외부브라우저 강제 호출 주소 (아이폰용)
+        location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(targetUrl);
+    }
+    </script>
+    
     <style>
     .stApp { background-color: #FFFFFF; }
     * { font-family: 'Apple SD Gothic Neo', sans-serif; color: #1C1C1E; }
     
-    /* 메인 카드 박스 */
     .main-card {
         background-color: #F2F2F7;
         padding: 30px 20px;
@@ -27,7 +32,6 @@ st.markdown("""
         text-align: center;
     }
     
-    /* 당번 이름 강조 */
     .winner-name {
         color: #007AFF;
         font-size: 3.2rem;
@@ -35,7 +39,6 @@ st.markdown("""
         margin: 15px 0;
     }
 
-    /* 메인 동작 버튼 */
     div.stButton > button {
         width: 100%;
         border-radius: 15px;
@@ -48,7 +51,6 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0,122,255,0.3);
     }
     
-    /* 하단 링크 버튼 */
     .link-btn div.stButton > button {
         height: 4rem;
         background-color: #FFFFFF;
@@ -59,10 +61,13 @@ st.markdown("""
         margin-bottom: 10px;
     }
 
-    /* 테이블 스타일 */
-    .stTable { background-color: white; border-radius: 10px; }
+    .stTable { background-color: white; border-radius: 12px; overflow: hidden; border: 1px solid #E5E5EA; }
     </style>
     """, unsafe_allow_html=True)
+
+# 카카오톡 사용자에게 한 번 더 안내 (스크립트가 차단될 경우 대비)
+if "Kakaotalk" in st.query_params.get("user-agent", ""):
+    st.warning("⚠️ 카카오톡 브라우저에서는 '홈 화면 추가'가 어렵습니다. 오른쪽 하단 '···' 버튼을 눌러 '다른 브라우저로 열기'를 선택해주세요.")
 
 # --- [상단 헤더] ---
 st.markdown('# ☕ 커피당번')
@@ -79,38 +84,39 @@ st.markdown(f"**오늘 커피 쏠 사람은?**", unsafe_allow_html=True)
 st.markdown(f'<div class="winner-name">{current_person}</div>', unsafe_allow_html=True)
 
 if st.button("✅ 결제 완료! 다음 순번으로"):
-    now = datetime.now().strftime("%m/%d %H:%M")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
     st.session_state.history_list.append({"날짜": now, "이름": current_person})
     st.session_state.current_idx = (st.session_state.current_idx + 1) % len(members)
     st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
 
+# --- [구입 현황 섹션] ---
+st.markdown("### 📊 구입 현황")
+df = pd.DataFrame(st.session_state.history_list)
+
+st.markdown("##### 🏆 멤버별 누적 횟수")
+stats = df['이름'].value_counts().reindex(members, fill_value=0).reset_index() if not df.empty else pd.DataFrame(members, columns=['이름']).assign(count=0)
+stats.columns = ['이름', '구입 횟수']
+st.table(stats)
+
+st.markdown("##### 🕒 최근 기록 (3회)")
+if not df.empty:
+    st.table(df.iloc[::-1].head(3))
+else:
+    st.info("아직 결제 내역이 없습니다.")
+
+st.divider()
+
 # --- [실시간 정보 섹션] ---
 st.markdown("### 🔗 성수동 실시간 정보")
-
 st.markdown('<div class="link-btn">', unsafe_allow_html=True)
-# 카카오 채널 메뉴 확인
 st.link_button("🍱 오늘 메뉴 (카카오 채널)", "https://pf.kakao.com/_jxcvzn/posts", use_container_width=True)
-
-# 2026년 성수 팝업 검색
 popup_q = urllib.parse.quote("2026년 성수동 팝업스토어 최신")
-st.link_button("🔥 2026 성수 팝업 실시간 검색", f"https://search.naver.com/search.naver?query={popup_q}", use_container_width=True)
+st.link_button("🔥 2026 성수 팝업 검색", f"https://search.naver.com/search.naver?query={popup_q}", use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- [하단 데이터 관리] ---
-with st.expander("📊 히스토리 및 통계"):
-    if st.session_state.history_list:
-        df = pd.DataFrame(st.session_state.history_list)
-        stats = df['이름'].value_counts().reindex(members, fill_value=0).reset_index()
-        stats.columns = ['이름', '구매횟수']
-        st.table(stats)
-        st.markdown("**최근 3회 내역**")
-        st.table(pd.DataFrame(st.session_state.history_list[-3:][::-1]))
-    else:
-        st.write("아직 기록이 없습니다.")
-
 with st.expander("🛠️ 설정"):
-    if st.button("🔄 기록 초기화"):
+    if st.button("🔄 기록 리셋"):
         st.session_state.current_idx = 0
         st.session_state.history_list = []
         st.rerun()
