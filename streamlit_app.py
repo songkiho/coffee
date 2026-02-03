@@ -3,66 +3,103 @@ import pandas as pd
 from datetime import datetime
 import urllib.parse
 
-# 1. 앱 설정
-st.set_page_config(page_title="성수동 점심 대장", page_icon="📍")
-st.title("☕ 성수동 커피 순번 & 온누리")
+# 1. 앱 설정 및 커스텀 CSS (아이폰 감성 디자인)
+st.set_page_config(page_title="Seongsu Coffee", page_icon="☕", layout="centered")
 
-# 2. 팀원 및 데이터 초기화
+st.markdown("""
+    <style>
+    /* 메인 배경색 */
+    .stApp { background-color: #F2F2F7; }
+    
+    /* 버튼 디자인 */
+    div.stButton > button {
+        width: 100%;
+        border-radius: 15px;
+        border: none;
+        height: 3.5rem;
+        background-color: #007AFF; /* Apple Blue */
+        color: white;
+        font-weight: bold;
+        font-size: 1.1rem;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s;
+    }
+    div.stButton > button:hover { background-color: #0051A8; transform: scale(1.02); }
+    
+    /* 카드형 섹션 디자인 */
+    .card {
+        background-color: white;
+        padding: 20px;
+        border-radius: 20px;
+        box-shadow: 0px 2px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+    }
+    
+    /* 텍스트 스타일링 */
+    h1, h2, h3 { color: #1C1C1E; font-family: 'Apple SD Gothic Neo', sans-serif; }
+    .stMarkdown { font-family: 'Apple SD Gothic Neo', sans-serif; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# 2. 상단 헤더
+st.title("☕ 성수동 점심 가이드")
+st.caption(f"Today: {datetime.now().strftime('%Y년 %m월 %d일')}")
+
+# --- [STEP 1: 위치 및 온누리 지도 카드] ---
+st.markdown('<div class="card">', unsafe_allow_html=True)
+st.subheader("📍 내 주변 핫플 & 가맹점")
+col_loc1, col_loc2 = st.columns(2)
+
+with col_loc1:
+    loc_url = "https://m.map.naver.com/search2/search.naver?query=" + urllib.parse.quote("현재 내 위치")
+    st.link_button("🔍 내 위치 확인", loc_url)
+with col_loc2:
+    onnuri_url = "https://m.map.naver.com/search2/search.naver?query=" + urllib.parse.quote("내 주변 온누리 가맹 식당 카페")
+    st.link_button("💳 온누리 가맹점", onnuri_url)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# --- [STEP 2: 커피 순번 카드] ---
 members = ["규리", "조조", "은비", "까비"]
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 
-# --- [STEP 1: 현재 위치 기반 지도 기능] ---
-st.subheader("📍 위치 기반 정보 확인")
-col_loc1, col_loc2 = st.columns(2)
-
-with col_loc1:
-    # 현재 내 위치를 지도로 바로 보여주는 버튼
-    # 네이버 지도에서 '현위치' 파라미터를 사용하여 지도를 엽니다.
-    my_location_url = "https://m.map.naver.com/search2/search.naver?query=" + urllib.parse.quote("현재 내 위치")
-    st.link_button("🔍 내 현재 위치 확인", my_location_url, use_container_width=True)
-
-with col_loc2:
-    # 식당/카페 필터링 버튼
-    onnuri_query = urllib.parse.quote("내 주변 온누리상품권 가맹 식당 카페")
-    st.link_button("💳 주변 온누리 가맹점", f"https://m.map.naver.com/search2/search.naver?query={onnuri_query}", use_container_width=True)
-
-st.caption("💡 지도 앱이 열리면 오른쪽 하단의 '현위치' 아이콘(동그라미 모양)을 한 번 더 누르면 가장 정확합니다.")
-st.divider()
-
-# --- [STEP 2: 커피 순번 시스템] ---
+st.markdown('<div class="card">', unsafe_allow_html=True)
 current_person = members[st.session_state.current_idx]
-st.success(f"### 🚩 이번 커피 당번: **{current_person}** 님")
+st.markdown(f"### 🚩 오늘의 당번: <span style='color:#007AFF;'>{current_person}</span> 님", unsafe_allow_html=True)
 
-if st.button("✅ 결제 완료 & 다음 순번", use_container_width=True):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+if st.button("✅ 결제 완료 (다음 순번으로)"):
+    now = datetime.now().strftime("%m/%d %H:%M")
     st.session_state.history_list.append({"날짜": now, "이름": current_person})
     st.session_state.current_idx = (st.session_state.current_idx + 1) % len(members)
     st.rerun()
 
-# 기록 및 통계
-tab1, tab2 = st.tabs(["📊 누적 통계", "📜 최근 내역(3개)"])
+# 누적 기록을 깔끔하게 표시
+tab1, tab2 = st.tabs(["📊 통계", "📜 기록"])
 with tab1:
     df = pd.DataFrame(st.session_state.history_list)
     stats = df['이름'].value_counts().reindex(members, fill_value=0).reset_index() if not df.empty else pd.DataFrame(members, columns=['이름']).assign(횟수=0)
-    stats.columns = ['이름', '횟수']
-    st.table(stats)
+    stats.columns = ['이름', '구매회수']
+    st.dataframe(stats, use_container_width=True, hide_index=True)
 with tab2:
     recent_3 = st.session_state.history_list[-3:][::-1] if st.session_state.history_list else []
-    st.table(pd.DataFrame(recent_3))
+    st.dataframe(pd.DataFrame(recent_3), use_container_width=True, hide_index=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
-st.divider()
+# --- [STEP 3: 실시간 정보 링크] ---
+st.markdown('<div class="card">', unsafe_allow_html=True)
+st.subheader("🔗 퀵 링크")
+col_link1, col_link2 = st.columns(2)
 
-# --- [STEP 3: 성수동 정보 & 메뉴] ---
-st.subheader("🔗 성수동 실시간 정보")
-st.link_button("🍱 오늘의 메뉴 확인 (카카오 채널)", "https://pf.kakao.com/_jxcvzn/posts", use_container_width=True)
+with col_link1:
+    st.link_button("🍱 메뉴 확인", "https://pf.kakao.com/_jxcvzn/posts")
+with col_link2:
+    popup_q = urllib.parse.quote("2026년 성수동 팝업스토어")
+    st.link_button("🔥 2026 팝업", f"https://search.naver.com/search.naver?query={popup_q}")
+st.markdown('</div>', unsafe_allow_html=True)
 
-# 2026년 팝업 검색
-popup_q = urllib.parse.quote("2026년 성수동 팝업스토어 최신")
-st.link_button("🔥 2026 성수 팝업 실시간 검색", f"https://search.naver.com/search.naver?query={popup_q}", use_container_width=True)
-
-with st.expander("⚙️ 설정"):
-    if st.button("🔄 기록 초기화"):
+# --- [하단 관리 기능] ---
+with st.expander("🛠️ 시스템 설정"):
+    if st.button("🔄 모든 데이터 리셋"):
         st.session_state.current_idx = 0
         st.session_state.history_list = []
         st.rerun()
