@@ -1,37 +1,43 @@
 import streamlit as st
-import random
-import pandas as pd
 
-# 앱 타이틀 및 설정
-st.set_page_config(page_title="커피 당번 뽑기", page_icon="☕")
-st.title("☕ 커피 당번 어플")
+# 앱 설정
+st.set_page_config(page_title="커피 순번 정하기", page_icon="☕")
+st.title("☕ 이번엔 누구 차례?")
 
-# 팀원 명단
+# 팀원 명단 (순서대로)
 members = ["규리", "조조", "은비", "까비"]
 
-# 세션 상태 초기화 (당첨 횟수 저장용)
-if 'history' not in st.session_state:
-    st.session_state.history = {name: 0 for name in members}
+# 세션 상태에 현재 순번(index) 저장
+if 'current_idx' not in st.session_state:
+    st.session_state.current_idx = 0
 
 # 메인 화면 구성
-st.subheader("오늘의 운명은?")
-if st.button("🔥 당번 추첨하기", use_container_width=True):
-    winner = random.choice(members)
-    st.session_state.history[winner] += 1
-    st.balloons()
-    st.success(f"🎊 오늘의 커피 당번은 **[{winner}]** 님입니다!")
+current_person = members[st.session_state.current_idx]
+next_person = members[(st.session_state.current_idx + 1) % len(members)]
+
+st.info(f"📍 현재 순번: **{current_person}**")
+st.write(f"⏭️ 다음 순번: {next_person}")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("✅ 결제 완료 (다음 사람으로)", use_container_width=True):
+        st.session_state.current_idx = (st.session_state.current_idx + 1) % len(members)
+        st.success(f"다음 차례는 {members[st.session_state.current_idx]} 님입니다!")
+        st.rerun()
+
+with col2:
+    if st.button("🔄 순번 초기화", use_container_width=True):
+        st.session_state.current_idx = 0
+        st.warning("순번이 처음(규리)으로 돌아갔습니다.")
+        st.rerun()
 
 st.divider()
 
-# 누적 통계 보기
-st.subheader("📊 누적 당첨 횟수")
-df = pd.DataFrame(
-    list(st.session_state.history.items()), 
-    columns=['이름', '당첨 횟수']
-)
-st.table(df)
-
-# 초기화 버튼
-if st.button("기록 초기화"):
-    st.session_state.history = {name: 0 for name in members}
-    st.rerun()
+# 전체 순서도 보여주기
+st.subheader("🏃 순번 리스트")
+for i, name in enumerate(members):
+    if i == st.session_state.current_idx:
+        st.markdown(f"**👉 {i+1}번: {name} (Today)**")
+    else:
+        st.text(f"   {i+1}번: {name}")
