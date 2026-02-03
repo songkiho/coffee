@@ -12,23 +12,22 @@ members = ["규리", "조조", "은비", "까비"]
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 
-# --- [STEP 1: 내 위치 기반 온누리 가맹점 찾기] ---
-st.subheader("🗺️ 내 주변 온누리 가맹점 (식당/카페)")
-st.write("버튼을 누르면 지도에서 현재 위치 주변 가맹점만 보여줍니다.")
+# --- [STEP 1: 현재 위치 기반 지도 기능] ---
+st.subheader("📍 위치 기반 정보 확인")
+col_loc1, col_loc2 = st.columns(2)
 
-# 식당과 카페만 정밀 필터링하는 검색어 구성
-food_query = urllib.parse.quote("내 주변 온누리상품권 가맹 식당")
-cafe_query = urllib.parse.quote("내 주변 온누리상품권 가맹 카페")
+with col_loc1:
+    # 현재 내 위치를 지도로 바로 보여주는 버튼
+    # 네이버 지도에서 '현위치' 파라미터를 사용하여 지도를 엽니다.
+    my_location_url = "https://m.map.naver.com/search2/search.naver?query=" + urllib.parse.quote("현재 내 위치")
+    st.link_button("🔍 내 현재 위치 확인", my_location_url, use_container_width=True)
 
-col_map1, col_map2 = st.columns(2)
+with col_loc2:
+    # 식당/카페 필터링 버튼
+    onnuri_query = urllib.parse.quote("내 주변 온누리상품권 가맹 식당 카페")
+    st.link_button("💳 주변 온누리 가맹점", f"https://m.map.naver.com/search2/search.naver?query={onnuri_query}", use_container_width=True)
 
-with col_map1:
-    # 네이버 지도 앱의 검색 기능을 호출
-    st.link_button("🍜 주변 가맹 식당", f"https://m.map.naver.com/search2/search.naver?query={food_query}", use_container_width=True)
-with col_map2:
-    st.link_button("☕ 주변 가맹 카페", f"https://m.map.naver.com/search2/search.naver?query={cafe_query}", use_container_width=True)
-
-st.caption("💡 지도 앱 실행 후 '현위치' 아이콘을 누르면 더 정확합니다.")
+st.caption("💡 지도 앱이 열리면 오른쪽 하단의 '현위치' 아이콘(동그라미 모양)을 한 번 더 누르면 가장 정확합니다.")
 st.divider()
 
 # --- [STEP 2: 커피 순번 시스템] ---
