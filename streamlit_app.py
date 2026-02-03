@@ -3,61 +3,76 @@ import pandas as pd
 from datetime import datetime
 import urllib.parse
 
-# 앱 설정
-st.set_page_config(page_title="2026 성수동 핫플", page_icon="🚀")
-st.title("☕ 2026 성수동 커피 순번 & 팝업")
+# 1. 앱 기본 설정
+st.set_page_config(page_title="성수동 커피 대장", page_icon="🍱")
 
-# 팀원 명단 및 데이터 초기화
+# 스타일 커스텀 (아이폰 가독성 최적화)
+st.markdown("""
+    <style>
+    .main { background-color: #f9f9f9; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3em; font-weight: bold; }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.title("🍱 성수동 커피 & 핫플 가이드")
+
+# --- [STEP 1: 식사 메뉴 확인 (카카오 채널)] ---
+st.subheader("🍴 오늘 뭐 먹지?")
+kakao_url = "https://pf.kakao.com/_jxcvzn/posts"
+st.link_button("📜 실시간 음식 메뉴 확인하기", kakao_url, type="primary")
+st.caption("위 버튼을 누르면 카카오 채널의 최신 메뉴 포스트로 연결됩니다.")
+st.divider()
+
+# --- [STEP 2: 커피 순번 시스템] ---
 members = ["규리", "조조", "은비", "까비"]
+
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 
-# --- [1. 커피 순번 섹션] ---
 current_person = members[st.session_state.current_idx]
-st.info(f"📍 **현재 순번: {current_person} 님**")
+st.subheader(f"☕ 커피 당번: {current_person} 님")
 
-if st.button("✅ 결제 완료 & 다음 사람", use_container_width=True):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M") # 연도 포함 기록
+if st.button("✅ 결제 완료 & 다음 순번"):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
     st.session_state.history_list.append({"날짜": now, "이름": current_person})
     st.session_state.current_idx = (st.session_state.current_idx + 1) % len(members)
     st.rerun()
 
-# --- [2. 기록 섹션 (최근 3개)] ---
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader("📊 누적 통계")
+# 기록 및 통계 (아이폰 가로 길이를 고려해 탭으로 분리)
+tab1, tab2 = st.tabs(["📊 누적 통계", "📜 최근 내역(3개)"])
+with tab1:
     df = pd.DataFrame(st.session_state.history_list)
     stats = df['이름'].value_counts().reindex(members, fill_value=0).reset_index() if not df.empty else pd.DataFrame(members, columns=['이름']).assign(횟수=0)
+    stats.columns = ['이름', '구매 횟수']
     st.table(stats)
 
-with col2:
-    st.subheader("📜 최근 내역")
+with tab2:
     recent_3 = st.session_state.history_list[-3:][::-1] if st.session_state.history_list else []
-    st.table(pd.DataFrame(recent_3))
+    if recent_3:
+        st.table(pd.DataFrame(recent_3))
+    else:
+        st.write("아직 결제 내역이 없습니다.")
 
 st.divider()
 
-# --- [3. 2026년 실시간 성수동 팝업 검색] ---
+# --- [STEP 3: 2026년 실시간 성수동 팝업] ---
 current_year = "2026년"
-st.subheader(f"🔍 {current_year} 성수동 실시간 팝업 정보")
-st.write(f"과거 데이터 제외, **{current_year}년 최신 정보**만 필터링합니다.")
+st.subheader(f"🔥 {current_year} 성수동 실시간 핫플")
 
-# 검색어에 2026년을 강제로 포함시켜 예전 정보 차단
 search_queries = [
     {"title": "📅 2026년 2월 성수동 팝업 리스트", "query": f"{current_year} 2월 성수동 팝업스토어 최신"},
-    {"title": "🔥 오늘 뜨는 2026 성수동 핫플", "query": f"{current_year} 성수동 오늘 팝업"},
-    {"title": "📸 인스타 감성 2026 성수 전시회", "query": f"{current_year} 성수동 전시 팝업"}
+    {"title": "📸 지금 가장 핫한 성수동 오늘 팝업", "query": f"{current_year} 성수동 오늘 팝업"},
+    {"title": "🧸 2026 성수동 전시/굿즈샵 정보", "query": f"{current_year} 성수동 전시 팝업"}
 ]
 
 for item in search_queries:
-    # 검색 쿼리 인코딩
     encoded_query = urllib.parse.quote(item["query"])
-    # 네이버 검색 시 '최신순' 옵션이 적용되도록 구성할 수도 있습니다.
-    st.link_button(f"{item['title']} 확인하기", f"https://search.naver.com/search.naver?query={encoded_query}", use_container_width=True)
+    st.link_button(item["title"], f"https://search.naver.com/search.naver?query={encoded_query}")
 
-st.caption(f"⚠️ {current_year} 키워드가 포함된 검색 결과로 연결되어 예전 정보 노출을 최소화합니다.")
-
-if st.button("🔄 기록 초기화"):
-    st.session_state.current_idx = 0
-    st.session_state.history_list = []
-    st.rerun()
+# --- [STEP 4: 초기화 및 하단 정보] ---
+with st.expander("⚙️ 설정 및 초기화"):
+    if st.button("🔄 모든 기록 리셋"):
+        st.session_state.current_idx = 0
+        st.session_state.history_list = []
+        st.rerun()
+st.caption(f"© 2026 성수동 팀장님 커스텀 앱 | 오늘 날짜: {datetime.now().strftime('%Y-%m-%d')}")
