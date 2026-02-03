@@ -6,7 +6,7 @@ import urllib.parse
 # 1. 앱 설정
 st.set_page_config(page_title="커피당번", page_icon="☕", layout="centered")
 
-# 2. 디자인 보정 (중첩 방지 및 가시성 강화)
+# 2. 디자인 보정 (시인성 및 레이아웃 최적화)
 st.markdown("""
     <style>
     .stApp { background-color: #FFFFFF !important; }
@@ -46,30 +46,23 @@ st.markdown("""
         margin-bottom: 10px;
     }
 
-    /* [수정] 초기화 버튼 구역 - 중첩 방지를 위해 테두리 및 여백 조정 */
+    /* 초기화 영역 디자인 */
     .reset-section {
         margin-top: 50px;
         padding: 20px;
         border-top: 1px solid #E5E5EA;
         text-align: center;
     }
-    .reset-btn div.stButton > button {
-        background-color: #FF3B30 !important; /* 경고의 빨간색 */
-        color: #FFFFFF !important;
-        height: 3rem;
-        width: auto;
-        padding: 0 30px;
-        font-size: 1rem !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 타이틀 및 당번 ---
-st.markdown('# ☕ 커피당번')
+# --- 기본 데이터 설정 ---
 members = ["규리", "조조", "은비", "까비"]
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 
+# --- 상단 타이틀 및 당번 ---
+st.markdown('# ☕ 커피당번')
 st.markdown("---")
 st.markdown("### 🚩 이번에 커피 쏠 사람")
 current_name = members[st.session_state.current_idx]
@@ -88,7 +81,7 @@ st.markdown("### 📊 구입 현황")
 df = pd.DataFrame(st.session_state.history_list)
 stats = df['이름'].value_counts().reindex(members, fill_value=0).reset_index() if not df.empty else pd.DataFrame(members, columns=['이름']).assign(count=0)
 stats.columns = ['이름', '횟수']
-st.table(stats) # 인덱스 없이 깔끔하게 출력
+st.table(stats)
 
 # --- 퀵 링크 ---
 st.markdown('<div class="link-section">', unsafe_allow_html=True)
@@ -97,12 +90,19 @@ popup_q = urllib.parse.quote("2026년 성수동 팝업스토어 최신")
 st.link_button("🔥 2026 성수 팝업 실시간 검색", f"https://search.naver.com/search.naver?query={popup_q}", use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- [수정] 초기화 영역: 중첩 방지를 위해 expander 대신 일반 영역으로 분리 ---
+# --- 🔐 [추가] 관리자용 데이터 초기화 영역 ---
 st.markdown('<div class="reset-section">', unsafe_allow_html=True)
-st.markdown("<p style='font-size: 0.9rem; color: #8E8E93 !important;'>데이터 관리가 필요하신가요?</p>", unsafe_allow_html=True)
-st.markdown('<div class="reset-btn">', unsafe_allow_html=True)
-if st.button("🔄 전체 기록 리셋"):
-    st.session_state.current_idx = 0
-    st.session_state.history_list = []
-    st.rerun()
-st.markdown('</div></div>', unsafe_allow_html=True)
+with st.expander("🛠️ 데이터 초기화 (관리자전용)"):
+    st.write("모든 기록을 삭제하려면 비밀번호를 입력하세요.")
+    # 비밀번호 입력창 (type="password"로 별표 처리)
+    input_pw = st.text_input("비밀번호 입력", type="password")
+    
+    if st.button("🔄 기록 리셋하기"):
+        if input_pw == "123qwe..":
+            st.session_state.current_idx = 0
+            st.session_state.history_list = []
+            st.success("모든 데이터가 초기화되었습니다.")
+            st.rerun()
+        else:
+            st.error("비밀번호가 틀렸습니다.")
+st.markdown('</div>', unsafe_allow_html=True)
