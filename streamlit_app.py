@@ -3,76 +3,64 @@ import pandas as pd
 from datetime import datetime
 import urllib.parse
 
-# 1. 앱 기본 설정
-st.set_page_config(page_title="성수동 커피 대장", page_icon="🍱")
+# 1. 앱 설정
+st.set_page_config(page_title="성수동 올인원 가이드", page_icon="💳")
+st.title("☕ 성수동 커피 순번 & 온누리 찾기")
 
-# 스타일 커스텀 (아이폰 가독성 최적화)
-st.markdown("""
-    <style>
-    .main { background-color: #f9f9f9; }
-    .stButton>button { width: 100%; border-radius: 10px; height: 3em; font-weight: bold; }
-    </style>
-    """, unsafe_allow_html=True)
-
-st.title("🍱 성수동 커피 & 핫플 가이드")
-
-# --- [STEP 1: 식사 메뉴 확인 (카카오 채널)] ---
-st.subheader("🍴 오늘 뭐 먹지?")
-kakao_url = "https://pf.kakao.com/_jxcvzn/posts"
-st.link_button("📜 실시간 음식 메뉴 확인하기", kakao_url, type="primary")
-st.caption("위 버튼을 누르면 카카오 채널의 최신 메뉴 포스트로 연결됩니다.")
-st.divider()
-
-# --- [STEP 2: 커피 순번 시스템] ---
+# 2. 데이터 초기화
 members = ["규리", "조조", "은비", "까비"]
-
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 
-current_person = members[st.session_state.current_idx]
-st.subheader(f"☕ 커피 당번: {current_person} 님")
+# --- [STEP 1: 온누리상품권 가맹점 찾기] ---
+st.subheader("💳 내 주변 온누리상품권 가맹점")
+st.write("현재 위치 근처의 온누리상품권 사용 가능 식당과 카페를 확인하세요.")
 
-if st.button("✅ 결제 완료 & 다음 순번"):
+col_on1, col_on2 = st.columns(2)
+with col_on1:
+    # 네이버 지도로 연결되는 링크 (모바일 환경에서 유용)
+    onnuri_food = urllib.parse.quote("내 주변 온누리상품권 가맹 식당")
+    st.link_button("🍜 주변 가맹 식당 찾기", f"https://m.map.naver.com/search2/search.naver?query={onnuri_food}", use_container_width=True)
+with col_on2:
+    onnuri_cafe = urllib.parse.quote("내 주변 온누리상품권 가맹 카페")
+    st.link_button("☕ 주변 가맹 카페 찾기", f"https://m.map.naver.com/search2/search.naver?query={onnuri_cafe}", use_container_width=True)
+
+st.caption("※ 네이버 지도 앱으로 연결되어 현재 위치 기반의 실시간 가맹점 정보를 보여줍니다.")
+st.divider()
+
+# --- [STEP 2: 커피 순번 시스템] ---
+current_person = members[st.session_state.current_idx]
+st.info(f"🚩 **현재 커피 당번: {current_person} 님**")
+
+if st.button("✅ 결제 완료 & 다음 순번", use_container_width=True):
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     st.session_state.history_list.append({"날짜": now, "이름": current_person})
     st.session_state.current_idx = (st.session_state.current_idx + 1) % len(members)
     st.rerun()
 
-# 기록 및 통계 (아이폰 가로 길이를 고려해 탭으로 분리)
+# 누적 기록 및 최근 내역
 tab1, tab2 = st.tabs(["📊 누적 통계", "📜 최근 내역(3개)"])
 with tab1:
     df = pd.DataFrame(st.session_state.history_list)
     stats = df['이름'].value_counts().reindex(members, fill_value=0).reset_index() if not df.empty else pd.DataFrame(members, columns=['이름']).assign(횟수=0)
-    stats.columns = ['이름', '구매 횟수']
+    stats.columns = ['이름', '횟수']
     st.table(stats)
-
 with tab2:
     recent_3 = st.session_state.history_list[-3:][::-1] if st.session_state.history_list else []
-    if recent_3:
-        st.table(pd.DataFrame(recent_3))
-    else:
-        st.write("아직 결제 내역이 없습니다.")
+    st.table(pd.DataFrame(recent_3))
 
 st.divider()
 
-# --- [STEP 3: 2026년 실시간 성수동 팝업] ---
-current_year = "2026년"
-st.subheader(f"🔥 {current_year} 성수동 실시간 핫플")
+# --- [STEP 3: 성수동 정보 & 메뉴] ---
+st.subheader("🔗 성수동 실시간 정보")
+st.link_button("🍱 오늘의 메뉴 확인 (카카오 채널)", "https://pf.kakao.com/_jxcvzn/posts", use_container_width=True)
 
-search_queries = [
-    {"title": "📅 2026년 2월 성수동 팝업 리스트", "query": f"{current_year} 2월 성수동 팝업스토어 최신"},
-    {"title": "📸 지금 가장 핫한 성수동 오늘 팝업", "query": f"{current_year} 성수동 오늘 팝업"},
-    {"title": "🧸 2026 성수동 전시/굿즈샵 정보", "query": f"{current_year} 성수동 전시 팝업"}
-]
+# 2026년 팝업 검색
+popup_query = urllib.parse.quote("2026년 성수동 팝업스토어 최신")
+st.link_button("🔥 2026 성수 팝업 실시간 검색", f"https://search.naver.com/search.naver?query={popup_query}", use_container_width=True)
 
-for item in search_queries:
-    encoded_query = urllib.parse.quote(item["query"])
-    st.link_button(item["title"], f"https://search.naver.com/search.naver?query={encoded_query}")
-
-# --- [STEP 4: 초기화 및 하단 정보] ---
-with st.expander("⚙️ 설정 및 초기화"):
-    if st.button("🔄 모든 기록 리셋"):
+with st.expander("⚙️ 초기화"):
+    if st.button("🔄 기록 리셋"):
         st.session_state.current_idx = 0
         st.session_state.history_list = []
         st.rerun()
-st.caption(f"© 2026 성수동 팀장님 커스텀 앱 | 오늘 날짜: {datetime.now().strftime('%Y-%m-%d')}")
