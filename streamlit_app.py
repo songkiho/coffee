@@ -60,7 +60,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 데이터 초기화 ---
-members = ["규리", "조조", "은비", "까비"]
+members = ["기호", "인식", "성민", "현석"]
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 if 'pass_list' not in st.session_state: st.session_state.pass_list = []
