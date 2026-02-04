@@ -7,20 +7,39 @@ import streamlit.components.v1 as components
 # 1. 앱 설정
 st.set_page_config(page_title="커피당번", page_icon="☕", layout="wide")
 
-# 2. 디자인 보정
+# 2. 디자인 보정 (사이드바 버튼 글자 강제 노출)
 st.markdown("""
     <style>
     .stApp { background-color: #FFFFFF !important; }
-    h1, h2, h3, p, span, div, label { 
-        color: #1C1C1E !important; 
-        font-family: 'Apple SD Gothic Neo', sans-serif !important; 
+    
+    /* 사이드바 전체 스타일 */
+    [data-testid="stSidebar"] {
+        background-color: #F2F2F7 !important;
+        border-right: 1px solid #E5E5EA;
+    }
+
+    /* [해결] 사이드바 내 버튼 글자 안 보임 현상 수정 */
+    [data-testid="stSidebar"] .stButton button {
+        background-color: #FFFFFF !important;
+        color: #007AFF !important; /* 글자색 파란색 강제 */
+        border: 1px solid #D1D1D6 !important;
+        border-radius: 10px !important;
+        height: 3rem !important;
+        font-weight: bold !important;
+        font-size: 0.9rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
-    /* 사이드바 중첩 방지 */
-    [data-testid="stSidebar"] { background-color: #F2F2F7 !important; }
-    [data-testid="stSidebar"] span, [data-testid="stSidebar"] svg { display: none !important; }
+    /* 리셋 버튼은 빨간색으로 */
+    [data-testid="stSidebar"] .reset-btn button {
+        background-color: #FF3B30 !important;
+        color: white !important;
+        border: none !important;
+    }
 
-    /* 메인 당번 카드 */
+    /* 메인 화면 당번 카드 */
     .info-card {
         background-color: #F2F2F7;
         padding: 30px;
@@ -34,22 +53,13 @@ st.markdown("""
         font-weight: 900 !important;
     }
 
-    /* 버튼 스타일 */
-    .stButton > button { width: 100%; border-radius: 12px !important; font-weight: bold !important; }
-    .buy-btn div.stButton > button {
-        height: 5rem;
+    /* 메인 화면 큰 결제 버튼 */
+    .buy-btn button {
+        height: 5rem !important;
         background-color: #28A745 !important;
         color: white !important;
         font-size: 1.5rem !important;
-    }
-    
-    /* 웹 뷰 박스 컨테이너 */
-    .webview-container {
-        border: 2px solid #E5E5EA;
-        border-radius: 15px;
-        overflow: hidden;
-        margin-top: 10px;
-        margin-bottom: 10px;
+        border-radius: 15px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -60,30 +70,51 @@ if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 if 'pass_list' not in st.session_state: st.session_state.pass_list = []
 if 'admin_mode' not in st.session_state: st.session_state.admin_mode = False
-# 화면 표시 상태 관리
-if 'view_state' not in st.session_state: st.session_state.view_state = None 
+if 'view_state' not in st.session_state: st.session_state.view_state = None
 
-# --- ⬅️ 좌측 사이드바 (통계 센터) ---
+# --- ⬅️ 좌측 사이드바 (글자 겹침 방지 처리) ---
 with st.sidebar:
     st.markdown("### 📊 통계 센터")
+    
+    # 누적 구입
+    st.markdown("**💰 누적 커피 구매**")
     df_h = pd.DataFrame(st.session_state.history_list)
     stats = df_h['이름'].value_counts().reindex(members, fill_value=0).reset_index() if not df_h.empty else pd.DataFrame(members, columns=['이름']).assign(count=0)
     stats.columns = ['이름', '횟수']
     st.table(stats)
     
+    # 패스 현황
+    st.markdown("**🚫 패스 현황**")
+    df_p = pd.DataFrame(st.session_state.pass_list)
+    if not df_p.empty:
+        p_stats = df_p.groupby(['이름', '사유']).size().unstack(fill_value=0).reindex(members, fill_value=0).reset_index()
+        st.table(p_stats)
+    
     st.divider()
+    
+    # [수정] 시스템 관리 버튼 영역
+    st.markdown("### 🛠️ 시스템 관리")
     if not st.session_state.admin_mode:
-        if st.button("🔐 관리자 모드"): st.session_state.admin_mode = True; st.rerun()
+        if st.button("🔐 관리자 모드 열기"):
+            st.session_state.admin_mode = True
+            st.rerun()
     else:
-        pw = st.text_input("비번", type="password")
-        if st.button("🧨 리셋"):
+        pw = st.text_input("비번입력", type="password")
+        # 리셋 버튼만 별도 스타일(빨간색) 적용을 위해 div로 감쌈
+        st.markdown('<div class="reset-btn">', unsafe_allow_html=True)
+        if st.button("🧨 전체 기록 리셋"):
             if pw == "123qwe..":
                 st.session_state.current_idx = 0
                 st.session_state.history_list = []
                 st.session_state.pass_list = []
                 st.session_state.admin_mode = False
                 st.rerun()
-        if st.button("닫기"): st.session_state.admin_mode = False; st.rerun()
+            else: st.error("비번 오류")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        if st.button("❌ 닫기"):
+            st.session_state.admin_mode = False
+            st.rerun()
 
 # --- ➡️ 우측 메인 화면 ---
 st.markdown("# ☕ 커피당번")
@@ -117,34 +148,18 @@ with col2:
 
 st.divider()
 
-# --- 🔗 성수동 실시간 정보 (앱 내 보기) ---
+# --- 🍱 하단 웹뷰 영역 ---
 st.subheader("🔗 성수동 실시간 정보")
-
-btn_col1, btn_col2 = st.columns(2)
-
-with btn_col1:
-    if st.button("🍱 오늘 메뉴 보기", use_container_width=True):
+b1, b2 = st.columns(2)
+with b1:
+    if st.button("🍱 오늘 메뉴 보기"):
         st.session_state.view_state = 'menu' if st.session_state.view_state != 'menu' else None
-
-with btn_col2:
-    if st.button("🔥 성수 팝업 검색", use_container_width=True):
+with b2:
+    if st.button("🔥 성수 팝업 검색"):
         st.session_state.view_state = 'popup' if st.session_state.view_state != 'popup' else None
 
-# 선택된 화면에 따른 iframe 표시
 if st.session_state.view_state == 'menu':
-    url = "https://pf.kakao.com/_jxcvzn/posts"
-    st.markdown('**🍱 카카오 채널 메뉴판**')
-    st.markdown('<div class="webview-container">', unsafe_allow_html=True)
-    components.iframe(url, height=600, scrolling=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.link_button("🌐 외부 브라우저로 보기", url, use_container_width=True)
-
+    components.iframe("https://pf.kakao.com/_jxcvzn/posts", height=600, scrolling=True)
 elif st.session_state.view_state == 'popup':
     query = urllib.parse.quote("2026년 성수동 팝업스토어")
-    url = f"https://search.naver.com/search.naver?query={query}"
-    st.markdown('**🔥 네이버 팝업 검색 결과**')
-    st.info("💡 네이버는 보안상 앱 내 보기를 차단할 수 있습니다. 화면이 안 나오면 아래 버튼을 눌러주세요.")
-    st.markdown('<div class="webview-container">', unsafe_allow_html=True)
-    components.iframe(url, height=600, scrolling=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.link_button("🌐 외부 브라우저로 보기", url, use_container_width=True)
+    components.iframe(f"https://search.naver.com/search.naver?query={query}", height=600, scrolling=True)
