@@ -7,7 +7,7 @@ import streamlit.components.v1 as components
 # 1. 앱 설정
 st.set_page_config(page_title="커피당번", page_icon="☕", layout="wide")
 
-# 2. 디자인 설정 (녹색 배경 + 검정 글씨 강제 적용)
+# 2. 디자인 설정 (녹색 배경 + 검정 글씨 + 링크버튼 스타일 통합)
 st.markdown("""
     <style>
     /* 기본 배경 및 폰트 */
@@ -20,21 +20,25 @@ st.markdown("""
     /* 사이드바 스타일 보정 */
     [data-testid="stSidebar"] { background-color: #F8F9FA !important; border-right: 1px solid #E5E5EA; }
     [data-testid="stSidebar"] svg, [data-testid="stSidebar"] .st-emotion-cache-15zrgzn { display: none !important; }
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p { display: none !important; } /* 시스템 텍스트 숨김 */
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p { display: none !important; } 
     
-    /* [핵심] 모든 버튼 스타일: 녹색 배경 + 검정 글씨 */
-    .stButton > button {
+    /* [핵심] 일반 버튼(stButton)과 링크 버튼(stLinkButton) 스타일 통일 */
+    .stButton > button, .stLinkButton > a {
         background-color: #28A745 !important; /* 녹색 */
         color: #000000 !important;       /* 검정색 글씨 */
-        border: 1px solid #1E7E34 !important; /* 테두리는 조금 더 진한 녹색 */
+        border: 1px solid #1E7E34 !important; 
         border-radius: 12px !important;
-        font-weight: 900 !important;     /* 글자 아주 굵게 */
+        font-weight: 900 !important;     
         font-size: 1rem !important;
         height: 3.5rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-decoration: none !important; /* 링크 밑줄 제거 */
     }
     
-    /* 버튼 호버 효과 (마우스 올렸을 때) */
-    .stButton > button:hover {
+    /* 버튼 호버 효과 */
+    .stButton > button:hover, .stLinkButton > a:hover {
         background-color: #218838 !important;
         color: #000000 !important;
         border-color: #1C7430 !important;
@@ -44,8 +48,6 @@ st.markdown("""
     .buy-btn div.stButton > button {
         height: 6rem !important;
         font-size: 1.8rem !important;
-        background-color: #28A745 !important;
-        color: #000000 !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
@@ -144,19 +146,20 @@ st.divider()
 # --- 하단 실시간 정보 ---
 st.subheader("🔗 성수동 정보")
 b1, b2 = st.columns(2)
+
+# 1. 오늘 메뉴 (기존 유지: 클릭 시 아래에 열림/닫힘)
 with b1:
     if st.button("🍱 오늘 메뉴 보기", use_container_width=True):
         st.session_state.view_state = 'menu' if st.session_state.view_state != 'menu' else None
-with b2:
-    if st.button("🔥 성수 팝업 검색", use_container_width=True):
-        st.session_state.view_state = 'popup' if st.session_state.view_state != 'popup' else None
 
+# 2. 성수 팝업 검색 (변경: 즉시 새창 연결)
+with b2:
+    query = urllib.parse.quote("2026년 성수동 팝업스토어")
+    # st.link_button을 사용하여 클릭 즉시 새 탭으로 이동
+    st.link_button("🔥 성수 팝업 검색 (새창)", f"https://search.naver.com/search.naver?query={query}", use_container_width=True)
+
+# 메뉴 버튼 클릭 시에만 하단 박스 노출
 if st.session_state.view_state == 'menu':
     st.info("💡 카카오 보안 정책으로 인해 화면이 안 보이면 아래 버튼을 눌러주세요.")
     components.iframe("https://pf.kakao.com/_jxcvzn/posts", height=600, scrolling=True)
     st.link_button("🌐 새창으로 메뉴 보기", "https://pf.kakao.com/_jxcvzn/posts", use_container_width=True)
-
-elif st.session_state.view_state == 'popup':
-    query = urllib.parse.quote("2026년 성수동 팝업스토어")
-    # 네이버는 iframe 불가하므로 버튼만 제공
-    st.link_button("🌐 네이버 팝업 검색 (새창)", f"https://search.naver.com/search.naver?query={query}", use_container_width=True)
