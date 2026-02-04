@@ -5,7 +5,7 @@ import urllib.parse
 import streamlit.components.v1 as components
 
 # 1. 앱 설정
-st.set_page_config(page_title="커피당번", page_icon="☕", layout="centered") # 모바일은 centered가 더 안정적
+st.set_page_config(page_title="커피당번", page_icon="☕", layout="centered")
 
 # 2. 디자인 설정 (녹색 테마 + 검정 글씨)
 st.markdown("""
@@ -27,10 +27,26 @@ st.markdown("""
         font-size: 1rem !important;
         height: 3.5rem !important;
         width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-decoration: none !important;
     }
+    
     .stButton > button:hover, .stLinkButton > a:hover {
         background-color: #218838 !important;
         color: #000000 !important;
+        border-color: #1C7430 !important;
+    }
+
+    /* 메뉴 박스 디자인 (열렸을 때) */
+    .menu-box {
+        background-color: #F8F9FA;
+        border: 2px solid #28A745;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
 
     /* 메인 결제 버튼 (크게) */
@@ -50,13 +66,6 @@ st.markdown("""
         border: 1px solid #E5E5EA;
     }
     .winner-name { color: #000000 !important; font-size: 4rem !important; font-weight: 900 !important; }
-    
-    /* 메뉴(Expander) 스타일 보정 */
-    [data-testid="stExpander"] {
-        background-color: #F8F9FA;
-        border-radius: 15px;
-        border: 1px solid #E5E5EA;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -67,13 +76,22 @@ if 'history_list' not in st.session_state: st.session_state.history_list = []
 if 'pass_list' not in st.session_state: st.session_state.pass_list = []
 if 'view_state' not in st.session_state: st.session_state.view_state = None
 if 'confirm_reset' not in st.session_state: st.session_state.confirm_reset = False
+if 'menu_open' not in st.session_state: st.session_state.menu_open = False # 메뉴 열림/닫힘 상태
 
 # --- 상단 타이틀 ---
 st.markdown("# ☕ 커피당번")
 
-# --- ☰ [핵심 변경] 접었다 펴는 메뉴 (Expander) ---
-# 사이드바 대신 메인 화면 상단에 배치하여 접근성 강화
-with st.expander("☰ 메뉴 및 통계 열기 (클릭)", expanded=False):
+# --- ☰ [해결] 버튼식 메뉴 토글 (Expander 제거) ---
+# 중첩 문제의 원인인 Expander를 일반 버튼으로 대체
+menu_label = "🔼 메뉴 닫기" if st.session_state.menu_open else "☰ 메뉴 및 통계 열기"
+
+if st.button(menu_label, use_container_width=True):
+    st.session_state.menu_open = not st.session_state.menu_open
+    st.rerun()
+
+# 메뉴가 열렸을 때만 보이는 구역
+if st.session_state.menu_open:
+    st.markdown('<div class="menu-box">', unsafe_allow_html=True)
     st.markdown("### 📊 통계 센터")
     
     # 1. 누적 구입
@@ -115,6 +133,7 @@ with st.expander("☰ 메뉴 및 통계 열기 (클릭)", expanded=False):
             if st.button("아니오", key="reset_no"):
                 st.session_state.confirm_reset = False
                 st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 메인 화면 (당번 확인) ---
 st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
