@@ -6,20 +6,16 @@ import urllib.parse
 # 1. 앱 설정
 st.set_page_config(page_title="커피당번", page_icon="☕", layout="centered")
 
-# 2. 디자인 보정 (중첩의 원인인 시스템 아이콘 강제 삭제)
+# 2. 디자인 설정 (가시성 및 중첩 방지)
 st.markdown("""
     <style>
-    /* 배경 및 기본 폰트 설정 */
     .stApp { background-color: #FFFFFF !important; }
     h1, h2, h3, p, span, div, label { 
         color: #1C1C1E !important; 
         font-family: 'Apple SD Gothic Neo', sans-serif !important; 
     }
 
-    /* 시스템 텍스트 중첩 방지 (arrow_drop_down 등 제거) */
-    span[data-testid="stWidgetLabel"] p { display: inline-block !important; }
-    
-    /* 메인 녹색 버튼 */
+    /* 메인 결제 버튼 (녹색) */
     .main-btn div.stButton > button {
         width: 100%;
         border-radius: 16px;
@@ -28,11 +24,20 @@ st.markdown("""
         color: #FFFFFF !important;
         font-weight: 800 !important;
         font-size: 1.5rem !important;
-        border: none;
-        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
     }
     
-    /* 당번 이름 강조 */
+    /* 패스 버튼 (오렌지색) */
+    .pass-btn div.stButton > button {
+        width: 100%;
+        border-radius: 12px;
+        height: 3.5rem;
+        background-color: #FF9500 !important;
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+        font-size: 1.1rem !important;
+        border: none;
+    }
+
     .winner-box {
         color: #007AFF !important;
         font-size: 3.8rem !important;
@@ -41,39 +46,31 @@ st.markdown("""
         text-align: center;
     }
 
-    /* 초기화 구역 디자인 */
     .admin-section {
-        margin-top: 60px;
-        padding: 25px;
+        margin-top: 50px;
+        padding: 20px;
         background-color: #F2F2F7;
         border-radius: 15px;
-        text-align: center;
-    }
-    
-    /* 빨간색 리셋 버튼 */
-    .reset-btn div.stButton > button {
-        background-color: #FF3B30 !important;
-        color: #FFFFFF !important;
-        height: 3rem;
-        border: none;
-        font-weight: bold;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 멤버 및 데이터 로드 ---
+# --- 데이터 초기화 ---
 members = ["규리", "조조", "은비", "까비"]
+
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
+if 'pass_list' not in st.session_state: st.session_state.pass_list = [] # 지각/휴가 기록용
 if 'show_admin' not in st.session_state: st.session_state.show_admin = False
 
-# --- 상단 레이아웃 ---
+# --- 메인 화면 ---
 st.markdown('# ☕ 커피당번')
 st.markdown("---")
 st.markdown("### 🚩 이번에 커피 쏠 사람")
 current_name = members[st.session_state.current_idx]
 st.markdown(f'<div class="winner-box">{current_name}</div>', unsafe_allow_html=True)
 
+# [기능 1] 결제 완료 버튼
 st.markdown('<div class="main-btn">', unsafe_allow_html=True)
 if st.button("✅ 결제 완료 ! 다음 사람으로"):
     now = datetime.now().strftime("%m/%d %H:%M")
@@ -82,12 +79,46 @@ if st.button("✅ 결제 완료 ! 다음 사람으로"):
     st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 통계 표 ---
+# [기능 2] PASS 버튼 (지각/휴가)
+st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
+col_late, col_vacation = st.columns(2)
+
+with col_late:
+    st.markdown('<div class="pass-btn">', unsafe_allow_html=True)
+    if st.button("⏰ 지각 PASS"):
+        st.session_state.pass_list.append({"이름": current_name, "사유": "지각"})
+        st.session_state.current_idx = (st.session_state.current_idx + 1) % len(members)
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col_vacation:
+    st.markdown('<div class="pass-btn">', unsafe_allow_html=True)
+    if st.button("🌴 휴가 PASS"):
+        st.session_state.pass_list.append({"이름": current_name, "사유": "휴가"})
+        st.session_state.current_idx = (st.session_state.current_idx + 1) % len(members)
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("---")
+
+# --- 통계 섹션 ---
 st.markdown("### 📊 구입 현황")
-df = pd.DataFrame(st.session_state.history_list)
-stats = df['이름'].value_counts().reindex(members, fill_value=0).reset_index() if not df.empty else pd.DataFrame(members, columns=['이름']).assign(count=0)
-stats.columns = ['이름', '횟수']
+df_hist = pd.DataFrame(st.session_state.history_list)
+stats = df_hist['이름'].value_counts().reindex(members, fill_value=0).reset_index() if not df_hist.empty else pd.DataFrame(members, columns=['이름']).assign(count=0)
+stats.columns = ['이름', '커피 구매 횟수']
 st.table(stats)
+
+# [기능 3] 지각/휴가 차트 (PASS 카운트)
+st.markdown("### 🚫 지각/휴가 현황 (PASS)")
+df_pass = pd.DataFrame(st.session_state.pass_list)
+if not df_pass.empty:
+    # 사유별로 카운트하여 표로 표시
+    pass_stats = df_pass.groupby(['이름', '사유']).size().unstack(fill_value=0).reindex(members, fill_value=0).reset_index()
+    st.table(pass_stats)
+else:
+    st.write("깨끗합니다! 아직 지각/휴가자가 없네요.")
+
+st.markdown("---")
 
 # --- 퀵 링크 ---
 col_menu, col_pop = st.columns(2)
@@ -97,32 +128,25 @@ with col_pop:
     popup_q = urllib.parse.quote("2026년 성수동 팝업스토어 최신")
     st.link_button("🔥 2026 팝업", f"https://search.naver.com/search.naver?query={popup_q}", use_container_width=True)
 
-# --- 🔐 관리자 초기화 섹션 (중첩 방지형) ---
+# --- 관리자 리셋 ---
 st.markdown('<div class="admin-section">', unsafe_allow_html=True)
-st.markdown("<p style='font-size: 0.9rem; color: #8E8E93 !important;'>데이터 관리가 필요하신가요?</p>", unsafe_allow_html=True)
-
-# 버튼을 눌러야 비밀번호 입력창이 나타남
 if not st.session_state.show_admin:
-    if st.button("🛠️ 관리자 모드 열기"):
+    if st.button("🛠️ 데이터 관리"):
         st.session_state.show_admin = True
         st.rerun()
 else:
-    input_pw = st.text_input("비밀번호 입력", type="password")
-    col_res, col_can = st.columns(2)
-    with col_res:
-        st.markdown('<div class="reset-btn">', unsafe_allow_html=True)
-        if st.button("🔄 기록 리셋"):
-            if input_pw == "123qwe..":
-                st.session_state.current_idx = 0
-                st.session_state.history_list = []
-                st.session_state.show_admin = False
-                st.success("초기화 완료!")
-                st.rerun()
-            else:
-                st.error("비번 오류")
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col_can:
-        if st.button("취소"):
+    pw = st.text_input("비밀번호", type="password")
+    if st.button("🔄 모든 기록 초기화"):
+        if pw == "123qwe..":
+            st.session_state.current_idx = 0
+            st.session_state.history_list = []
+            st.session_state.pass_list = []
             st.session_state.show_admin = False
+            st.success("리셋 완료")
             st.rerun()
+        else:
+            st.error("비번 틀림")
+    if st.button("닫기"):
+        st.session_state.show_admin = False
+        st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
