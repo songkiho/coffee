@@ -70,7 +70,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 데이터 초기화 ---
-members = ["규리", "조조", "은비", "까비"]
+members = ["기호", "인식", "성민", "현석"]
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 if 'pass_list' not in st.session_state: st.session_state.pass_list = []
@@ -125,7 +125,7 @@ if st.session_state.menu_open:
     
     # 초기화 버튼을 눌렀다면 -> 비밀번호 입력창 표시
     else:
-        st.warning("⚠️ 초기화하려면 비밀번호(1111)를 입력하세요.", icon="🔒")
+        st.warning("⚠️ 초기화하려면 비밀번호를 입력하세요.", icon="🔒")
         
         # 비밀번호 입력 필드
         input_pw = st.text_input("비밀번호 4자리", type="password", key="reset_pw_input")
