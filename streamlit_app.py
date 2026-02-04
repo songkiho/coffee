@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import urllib.parse
-import streamlit.components.v1 as components # 웹 페이지 삽입을 위한 모듈
+import streamlit.components.v1 as components
 
 # 1. 앱 설정
 st.set_page_config(page_title="커피당번", page_icon="☕", layout="wide")
@@ -16,7 +16,7 @@ st.markdown("""
         font-family: 'Apple SD Gothic Neo', sans-serif !important; 
     }
     
-    /* 사이드바 보정 */
+    /* 사이드바 중첩 방지 */
     [data-testid="stSidebar"] { background-color: #F2F2F7 !important; }
     [data-testid="stSidebar"] span, [data-testid="stSidebar"] svg { display: none !important; }
 
@@ -43,12 +43,13 @@ st.markdown("""
         font-size: 1.5rem !important;
     }
     
-    /* 웹 뷰 박스 테두리 */
+    /* 웹 뷰 박스 컨테이너 */
     .webview-container {
         border: 2px solid #E5E5EA;
         border-radius: 15px;
         overflow: hidden;
         margin-top: 10px;
+        margin-bottom: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -59,9 +60,10 @@ if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 if 'pass_list' not in st.session_state: st.session_state.pass_list = []
 if 'admin_mode' not in st.session_state: st.session_state.admin_mode = False
-if 'show_menu' not in st.session_state: st.session_state.show_menu = False # 메뉴 박스 노출 여부
+# 화면 표시 상태 관리
+if 'view_state' not in st.session_state: st.session_state.view_state = None 
 
-# --- ⬅️ 좌측 사이드바 (통계) ---
+# --- ⬅️ 좌측 사이드바 (통계 센터) ---
 with st.sidebar:
     st.markdown("### 📊 통계 센터")
     df_h = pd.DataFrame(st.session_state.history_list)
@@ -115,23 +117,34 @@ with col2:
 
 st.divider()
 
-# --- 🍱 오늘의 메뉴 앱 내 보기 기능 ---
-st.subheader("🍱 오늘의 메뉴")
+# --- 🔗 성수동 실시간 정보 (앱 내 보기) ---
+st.subheader("🔗 성수동 실시간 정보")
 
-if st.button("📱 메뉴 화면 열기 / 닫기", use_container_width=True):
-    st.session_state.show_menu = not st.session_state.show_menu
+btn_col1, btn_col2 = st.columns(2)
 
-if st.session_state.show_menu:
-    st.info("💡 화면이 나오지 않는다면 해당 사이트에서 보안상 막아둔 것입니다. 이럴 땐 아래 '새창으로 보기'를 눌러주세요.")
-    # iframe 삽입 (박스 형태로 표시)
+with btn_col1:
+    if st.button("🍱 오늘 메뉴 보기", use_container_width=True):
+        st.session_state.view_state = 'menu' if st.session_state.view_state != 'menu' else None
+
+with btn_col2:
+    if st.button("🔥 성수 팝업 검색", use_container_width=True):
+        st.session_state.view_state = 'popup' if st.session_state.view_state != 'popup' else None
+
+# 선택된 화면에 따른 iframe 표시
+if st.session_state.view_state == 'menu':
+    url = "https://pf.kakao.com/_jxcvzn/posts"
+    st.markdown('**🍱 카카오 채널 메뉴판**')
     st.markdown('<div class="webview-container">', unsafe_allow_html=True)
-    components.iframe("https://pf.kakao.com/_jxcvzn/posts", height=500, scrolling=True)
+    components.iframe(url, height=600, scrolling=True)
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    st.link_button("🌐 외부 브라우저(새창)로 열기", "https://pf.kakao.com/_jxcvzn/posts", use_container_width=True)
+    st.link_button("🌐 외부 브라우저로 보기", url, use_container_width=True)
 
-st.divider()
-
-# 팝업 검색 (이건 네이버가 막아둘 확률이 높아 버튼으로 유지)
-popup_q = urllib.parse.quote("2026년 성수동 팝업스토어")
-st.link_button("🔥 2026 성수 팝업 검색 (새창)", f"https://search.naver.com/search.naver?query={popup_q}", use_container_width=True)
+elif st.session_state.view_state == 'popup':
+    query = urllib.parse.quote("2026년 성수동 팝업스토어")
+    url = f"https://search.naver.com/search.naver?query={query}"
+    st.markdown('**🔥 네이버 팝업 검색 결과**')
+    st.info("💡 네이버는 보안상 앱 내 보기를 차단할 수 있습니다. 화면이 안 나오면 아래 버튼을 눌러주세요.")
+    st.markdown('<div class="webview-container">', unsafe_allow_html=True)
+    components.iframe(url, height=600, scrolling=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.link_button("🌐 외부 브라우저로 보기", url, use_container_width=True)
