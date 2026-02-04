@@ -3,104 +3,138 @@ import pandas as pd
 from datetime import datetime
 import urllib.parse
 
-# 1. 앱 설정 및 디자인
-st.set_page_config(page_title="커피당번", page_icon="☕", layout="wide") # wide 모드로 분할 최적화
+# 1. 앱 설정 및 레이아웃 (전체 폭 사용)
+st.set_page_config(page_title="커피당번", page_icon="☕", layout="wide")
 
+# 2. 디자인 보정 (중첩 텍스트 강제 삭제 및 모바일 최적화)
 st.markdown("""
     <style>
+    /* 배경 및 기본 폰트 */
     .stApp { background-color: #FFFFFF !important; }
     h1, h2, h3, p, span, div, label { 
         color: #1C1C1E !important; 
         font-family: 'Apple SD Gothic Neo', sans-serif !important; 
     }
     
-    /* 사이드바 배경색 보정 */
+    /* [수정] 사이드바 내부의 화살표/아이콘 텍스트 중첩 강제 차단 */
+    [data-testid="stSidebar"] span, [data-testid="stSidebar"] svg {
+        display: none !important;
+    }
+    /* 사이드바 제목/텍스트는 보이게 허용 */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] b {
+        display: block !important;
+    }
+
+    /* 사이드바 배경 및 구분선 */
     [data-testid="stSidebar"] {
         background-color: #F2F2F7 !important;
         border-right: 1px solid #E5E5EA;
     }
 
-    /* 메인 카드 디자인 */
+    /* 메인 당번 카드 */
     .info-card {
         background-color: #F2F2F7;
-        padding: 30px;
+        padding: 40px 20px;
         border-radius: 25px;
         text-align: center;
         margin-bottom: 25px;
     }
-
     .winner-name {
         color: #007AFF !important;
-        font-size: 4.5rem !important;
+        font-size: 5rem !important;
         font-weight: 900 !important;
-        margin: 15px 0;
+        margin: 10px 0;
     }
 
     /* 버튼 스타일 */
+    .stButton > button { width: 100%; border-radius: 15px !important; font-weight: bold !important; }
+    
+    /* 결제 버튼 (녹색) */
     .buy-btn div.stButton > button {
-        width: 100%;
-        border-radius: 20px;
         height: 6rem;
         background-color: #28A745 !important;
         color: white !important;
         font-size: 1.8rem !important;
-        font-weight: 800 !important;
         box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
     }
     
+    /* 패스 버튼 (주황색) */
     .pass-btn div.stButton > button {
-        height: 4rem;
         background-color: #FF9500 !important;
         color: white !important;
-        font-weight: bold;
+    }
+
+    /* 초기화 버튼 (빨간색) */
+    .reset-btn div.stButton > button {
+        background-color: #FF3B30 !important;
+        color: white !important;
+        height: 3rem;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 데이터 로직 ---
+# --- 데이터 세션 초기화 ---
 members = ["규리", "조조", "은비", "까비"]
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 if 'pass_list' not in st.session_state: st.session_state.pass_list = []
+if 'show_reset' not in st.session_state: st.session_state.show_reset = False
 
-# --- ⬅️ 좌측 사이드바 메뉴 ---
+# --- ⬅️ 좌측 사이드바 (통계 및 관리) ---
 with st.sidebar:
-    st.header("📊 통계 센터")
+    st.markdown("### 📊 통계 센터")
     
-    # 1. 구입 횟수 통계
+    # 누적 구입 통계
+    st.markdown("**💰 누적 커피 구매**")
     df_h = pd.DataFrame(st.session_state.history_list)
     stats = df_h['이름'].value_counts().reindex(members, fill_value=0).reset_index() if not df_h.empty else pd.DataFrame(members, columns=['이름']).assign(count=0)
-    stats.columns = ['이름', '커피 구매']
-    st.subheader("💰 누적 구입")
+    stats.columns = ['이름', '횟수']
     st.table(stats)
     
-    # 2. PASS 현황 (지각/휴가)
+    # 패스 현황 (지각/휴가)
+    st.markdown("**🚫 패스 현황**")
     df_p = pd.DataFrame(st.session_state.pass_list)
     if not df_p.empty:
-        st.subheader("🚫 패스 현황")
         p_stats = df_p.groupby(['이름', '사유']).size().unstack(fill_value=0).reindex(members, fill_value=0).reset_index()
         st.table(p_stats)
+    else:
+        st.caption("패스 내역이 없습니다.")
     
-    st.divider()
+    st.markdown("---")
     
-    # 3. 데이터 초기화 (비번: 123qwe..)
-    with st.expander("🛠️ 시스템 리셋"):
-        pw = st.text_input("비밀번호", type="password")
-        if st.button("🔄 전체 초기화"):
-            if pw == "123qwe..":
-                st.session_state.current_idx = 0
-                st.session_state.history_list = []
-                st.session_state.pass_list = []
+    # 관리자 리셋 (중첩 방지를 위해 expander 제거)
+    st.markdown("**🛠️ 시스템 관리**")
+    if not st.session_state.show_reset:
+        if st.button("데이터 리셋 열기"):
+            st.session_state.show_reset = True
+            st.rerun()
+    else:
+        pw = st.text_input("비밀번호", type="password", placeholder="비번입력")
+        col_r, col_c = st.columns(2)
+        with col_r:
+            st.markdown('<div class="reset-btn">', unsafe_allow_html=True)
+            if st.button("리셋"):
+                if pw == "123qwe..":
+                    st.session_state.current_idx = 0
+                    st.session_state.history_list = []
+                    st.session_state.pass_list = []
+                    st.session_state.show_reset = False
+                    st.rerun()
+                else: st.error("오류")
+            st.markdown('</div>', unsafe_allow_html=True)
+        with col_c:
+            if st.button("취소"):
+                st.session_state.show_reset = False
                 st.rerun()
-            else: st.error("비번 틀림")
 
 # --- ➡️ 우측 메인 화면 ---
-st.title("☕ 커피당번")
+st.markdown("# ☕ 커피당번")
 current_name = members[st.session_state.current_idx]
 
 st.markdown(f"""
     <div class="info-card">
-        <p style='font-size:1.2rem; margin-bottom:0px;'>오늘 커피 주인공</p>
+        <p style='font-size:1.2rem; color:#8E8E93 !important;'>오늘 커피 쏠 사람</p>
         <div class="winner-name">{current_name}</div>
     </div>
     """, unsafe_allow_html=True)
@@ -131,13 +165,13 @@ with c2:
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-st.divider()
+st.markdown("---")
 
 # 퀵 링크
-st.subheader("🔗 성수동 실시간 정보")
-col_m, col_p = st.columns(2)
-with col_m:
-    st.link_button("🍱 오늘 메뉴 (카카오)", "https://pf.kakao.com/_jxcvzn/posts", use_container_width=True)
-with col_p:
+st.markdown("### 🔗 성수동 실시간 정보")
+cl1, cl2 = st.columns(2)
+with cl1:
+    st.link_button("🍱 오늘 메뉴", "https://pf.kakao.com/_jxcvzn/posts", use_container_width=True)
+with cl2:
     p_q = urllib.parse.quote("2026년 성수동 팝업스토어")
-    st.link_button("🔥 2026 성수 팝업", f"https://search.naver.com/search.naver?query={p_q}", use_container_width=True)
+    st.link_button("🔥 2026 팝업", f"https://search.naver.com/search.naver?query={p_q}", use_container_width=True)
