@@ -12,7 +12,7 @@ st.markdown("""
     <style>
     /* 기본 폰트 및 색상 */
     .stApp { background-color: #FFFFFF !important; }
-    h1, h2, h3, p, div, span, label, li { 
+    h1, h2, h3, p, div, span, label, li, input { 
         font-family: 'Apple SD Gothic Neo', sans-serif !important; 
         color: #1C1C1E !important; 
     }
@@ -39,7 +39,7 @@ st.markdown("""
         border-color: #1C7430 !important;
     }
 
-    /* 메뉴 박스 디자인 (열렸을 때) */
+    /* 메뉴 박스 디자인 */
     .menu-box {
         background-color: #F8F9FA;
         border: 2px solid #28A745;
@@ -70,26 +70,28 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 데이터 초기화 ---
-members = ["기호", "인식", "성민", "현석"]
+members = ["규리", "조조", "은비", "까비"]
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 if 'pass_list' not in st.session_state: st.session_state.pass_list = []
 if 'view_state' not in st.session_state: st.session_state.view_state = None
 if 'confirm_reset' not in st.session_state: st.session_state.confirm_reset = False
-if 'menu_open' not in st.session_state: st.session_state.menu_open = False # 메뉴 열림/닫힘 상태
+if 'menu_open' not in st.session_state: st.session_state.menu_open = False
 
 # --- 상단 타이틀 ---
 st.markdown("# ☕ 커피당번")
 
-# --- ☰ [해결] 버튼식 메뉴 토글 (Expander 제거) ---
-# 중첩 문제의 원인인 Expander를 일반 버튼으로 대체
+# --- ☰ 메뉴 토글 버튼 ---
 menu_label = "🔼 메뉴 닫기" if st.session_state.menu_open else "☰ 메뉴 및 통계 열기"
 
 if st.button(menu_label, use_container_width=True):
     st.session_state.menu_open = not st.session_state.menu_open
+    # 메뉴를 닫을 때 초기화 상태도 리셋하여 깔끔하게
+    if not st.session_state.menu_open:
+        st.session_state.confirm_reset = False
     st.rerun()
 
-# 메뉴가 열렸을 때만 보이는 구역
+# --- 메뉴 내부 화면 ---
 if st.session_state.menu_open:
     st.markdown('<div class="menu-box">', unsafe_allow_html=True)
     st.markdown("### 📊 통계 센터")
@@ -112,27 +114,39 @@ if st.session_state.menu_open:
         
     st.divider()
     
-    # 3. 초기화 (확인창 포함)
+    # 3. [보안 강화] 비밀번호 입력 후 초기화
     st.markdown("### ⚙️ 설정")
-    if st.button("🗑️ 기록 초기화", key="reset_trigger"):
-        st.session_state.confirm_reset = True
-        st.rerun()
-
-    if st.session_state.confirm_reset:
-        st.warning("⚠️ 모든 기록을 삭제할까요?")
+    
+    # 초기화 버튼을 아직 안 눌렀다면 -> 버튼 표시
+    if not st.session_state.confirm_reset:
+        if st.button("🗑️ 기록 초기화", key="reset_trigger"):
+            st.session_state.confirm_reset = True
+            st.rerun()
+    
+    # 초기화 버튼을 눌렀다면 -> 비밀번호 입력창 표시
+    else:
+        st.warning("⚠️ 초기화하려면 비밀번호(1111)를 입력하세요.", icon="🔒")
+        
+        # 비밀번호 입력 필드
+        input_pw = st.text_input("비밀번호 4자리", type="password", key="reset_pw_input")
+        
         c1, c2 = st.columns(2)
         with c1:
             if st.button("네 (삭제)", key="reset_yes"):
-                st.session_state.current_idx = 0
-                st.session_state.history_list = []
-                st.session_state.pass_list = []
-                st.session_state.confirm_reset = False
-                st.success("초기화 완료!")
-                st.rerun()
+                if input_pw == "1111":
+                    st.session_state.current_idx = 0
+                    st.session_state.history_list = []
+                    st.session_state.pass_list = []
+                    st.session_state.confirm_reset = False
+                    st.success("모든 기록이 초기화되었습니다!")
+                    st.rerun()
+                else:
+                    st.error("비밀번호가 틀렸습니다.")
         with c2:
-            if st.button("아니오", key="reset_no"):
+            if st.button("취소", key="reset_no"):
                 st.session_state.confirm_reset = False
                 st.rerun()
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 메인 화면 (당번 확인) ---
