@@ -7,25 +7,24 @@ import streamlit.components.v1 as components
 # 1. 앱 설정
 st.set_page_config(page_title="커피당번", page_icon="☕", layout="wide")
 
-# 2. 디자인 설정 (녹색 배경 + 검정 글씨 + 링크버튼 스타일 통합)
+# 2. 디자인 설정 (녹색 테마 유지)
 st.markdown("""
     <style>
-    /* 기본 배경 및 폰트 */
+    /* 기본 설정 */
     .stApp { background-color: #FFFFFF !important; }
     h1, h2, h3, p, div, span, label { 
         font-family: 'Apple SD Gothic Neo', sans-serif !important; 
         color: #1C1C1E !important; 
     }
 
-    /* 사이드바 스타일 보정 */
+    /* 사이드바 스타일 */
     [data-testid="stSidebar"] { background-color: #F8F9FA !important; border-right: 1px solid #E5E5EA; }
-    [data-testid="stSidebar"] svg, [data-testid="stSidebar"] .st-emotion-cache-15zrgzn { display: none !important; }
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p { display: none !important; } 
+    [data-testid="stSidebar"] svg, [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p { display: none !important; } 
     
-    /* [핵심] 일반 버튼(stButton)과 링크 버튼(stLinkButton) 스타일 통일 */
+    /* 버튼/링크버튼 스타일 통일 (녹색 배경 + 검정 글씨) */
     .stButton > button, .stLinkButton > a {
-        background-color: #28A745 !important; /* 녹색 */
-        color: #000000 !important;       /* 검정색 글씨 */
+        background-color: #28A745 !important; 
+        color: #000000 !important;       
         border: 1px solid #1E7E34 !important; 
         border-radius: 12px !important;
         font-weight: 900 !important;     
@@ -34,24 +33,22 @@ st.markdown("""
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        text-decoration: none !important; /* 링크 밑줄 제거 */
+        text-decoration: none !important;
     }
-    
-    /* 버튼 호버 효과 */
     .stButton > button:hover, .stLinkButton > a:hover {
         background-color: #218838 !important;
-        color: #000000 !important;
         border-color: #1C7430 !important;
+        color: #000000 !important;
     }
 
-    /* 메인 '오늘 결제 완료' 버튼 (더 크고 웅장하게) */
+    /* 메인 결제 버튼 (크게) */
     .buy-btn div.stButton > button {
         height: 6rem !important;
         font-size: 1.8rem !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
-    /* 메인 카드 디자인 */
+    /* 메인 카드 */
     .info-card {
         background-color: #F2F2F7;
         padding: 40px 20px;
@@ -61,15 +58,19 @@ st.markdown("""
         border: 1px solid #E5E5EA;
     }
     .winner-name { color: #000000 !important; font-size: 4.5rem !important; font-weight: 900 !important; }
+    
+    /* 확인 팝업 박스 스타일 */
+    [data-testid="stStatusWidget"] { display: none; } /* 로딩 숨김 */
     </style>
     """, unsafe_allow_html=True)
 
-# --- 데이터 초기화 ---
+# --- 데이터 및 상태 초기화 ---
 members = ["규리", "조조", "은비", "까비"]
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
 if 'history_list' not in st.session_state: st.session_state.history_list = []
 if 'pass_list' not in st.session_state: st.session_state.pass_list = []
 if 'view_state' not in st.session_state: st.session_state.view_state = None
+if 'confirm_reset' not in st.session_state: st.session_state.confirm_reset = False # 초기화 확인창 상태
 
 # --- ⬅️ 좌측 사이드바 ---
 with st.sidebar:
@@ -93,21 +94,32 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # 3. 시스템 관리 (체크박스 방식)
-    st.markdown("### ⚙️ 설정")
-    admin_toggle = st.checkbox("관리자 모드 (리셋)")
+    # 3. [변경] 기록 초기화 버튼 & 확인 팝업
+    st.markdown("### ⚙️ 관리")
     
-    if admin_toggle:
-        pw = st.text_input("비밀번호", type="password", placeholder="비번 입력")
-        if st.button("🧨 모든 기록 리셋"):
-            if pw == "123qwe..":
+    # 초기화 버튼을 누르면 -> 확인창 상태(True)로 변경
+    if st.button("🗑️ 기록 초기화", use_container_width=True):
+        st.session_state.confirm_reset = True
+        st.rerun()
+
+    # 확인창이 켜져있으면 경고 박스 표시
+    if st.session_state.confirm_reset:
+        st.warning("⚠️ 정말로 모든 기록을 삭제하시겠습니까?", icon="⚠️")
+        col_yes, col_no = st.columns(2)
+        with col_yes:
+            if st.button("네", use_container_width=True):
+                # 데이터 초기화 실행
                 st.session_state.current_idx = 0
                 st.session_state.history_list = []
                 st.session_state.pass_list = []
-                st.success("리셋 완료!")
+                st.session_state.confirm_reset = False
+                st.success("초기화 완료!")
                 st.rerun()
-            else:
-                st.error("비번 불일치")
+        with col_no:
+            if st.button("아니오", use_container_width=True):
+                # 취소
+                st.session_state.confirm_reset = False
+                st.rerun()
 
 # --- ➡️ 우측 메인 화면 ---
 st.markdown("# ☕ 커피당번")
@@ -147,19 +159,15 @@ st.divider()
 st.subheader("🔗 성수동 정보")
 b1, b2 = st.columns(2)
 
-# 1. 오늘 메뉴 (기존 유지: 클릭 시 아래에 열림/닫힘)
 with b1:
     if st.button("🍱 오늘 메뉴 보기", use_container_width=True):
         st.session_state.view_state = 'menu' if st.session_state.view_state != 'menu' else None
 
-# 2. 성수 팝업 검색 (변경: 즉시 새창 연결)
 with b2:
     query = urllib.parse.quote("2026년 성수동 팝업스토어")
-    # st.link_button을 사용하여 클릭 즉시 새 탭으로 이동
     st.link_button("🔥 성수 팝업 검색 (새창)", f"https://search.naver.com/search.naver?query={query}", use_container_width=True)
 
-# 메뉴 버튼 클릭 시에만 하단 박스 노출
 if st.session_state.view_state == 'menu':
-    st.info("💡 카카오 보안 정책으로 인해 화면이 안 보이면 아래 버튼을 눌러주세요.")
+    st.info("💡 화면이 안 보이면 아래 버튼을 눌러주세요.")
     components.iframe("https://pf.kakao.com/_jxcvzn/posts", height=600, scrolling=True)
     st.link_button("🌐 새창으로 메뉴 보기", "https://pf.kakao.com/_jxcvzn/posts", use_container_width=True)
